@@ -1,5 +1,4 @@
 # 这是基于wNim和miniblink的一个示例。
-# 基中的css样式使用了layui
 
 import wNim/[wApp, wFrame]
 import os
