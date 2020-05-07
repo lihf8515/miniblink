@@ -200,7 +200,7 @@ proc wkeGetContentWidth*(webView: wkeWebView): cint {.importc, dynlib: dllname, 
 proc wkeGetContentHeight*(webView: wkeWebView): cint {.importc, dynlib: dllname, cdecl.}
   ## 获取网页排版出来的高度
 
-proc wkeGetViewDC(webView: wkeWebView): cint {.importc, dynlib: dllname, cdecl.}
+proc wkeGetViewDC*(webView: wkeWebView): cint {.importc, dynlib: dllname, cdecl.}
   ## 获取webview的DC
 
 proc wkeCanGoBack*(webView: wkeWebView): bool {.importc, dynlib: dllname, cdecl.}
