@@ -185,7 +185,7 @@ proc wkeReload*(webView: wkeWebView) {.importc, dynlib: dllname, cdecl.}
 proc wkeGetTitle*(webView: wkeWebView): cstring {.importc, dynlib: dllname, cdecl.}
   ## 获取页面标题
 
-proc wkeResize*(webView: wkeWebView, width, height: cint) {.importc, dynlib: dllname, cdecl.}
+proc wkeResize*(webView: wkeWebView, width, height: int) {.importc, dynlib: dllname, cdecl.}
   ## 重新设置页面的宽高。如果wkeWebView是带窗口模式的，会设置真窗口的宽高
 
 proc wkeGetWidth*(webView: wkeWebView): cint {.importc, dynlib: dllname, cdecl.}
@@ -199,6 +199,9 @@ proc wkeGetContentWidth*(webView: wkeWebView): cint {.importc, dynlib: dllname, 
 
 proc wkeGetContentHeight*(webView: wkeWebView): cint {.importc, dynlib: dllname, cdecl.}
   ## 获取网页排版出来的高度
+
+proc wkeGetViewDC(webView: wkeWebView): cint {.importc, dynlib: dllname, cdecl.}
+  ## 获取webview的DC
 
 proc wkeCanGoBack*(webView: wkeWebView): bool {.importc, dynlib: dllname, cdecl.}
   ## 页面是否可以后退
@@ -444,7 +447,9 @@ proc wkeGetUserKeyValue*(webView: wkeWebView, key: cstring): pointer {.importc, 
 proc wkeGetCursorInfoType*(webView: wkeWebView): cint {.importc, dynlib: dllname, cdecl.}
   ## 暂无接口描述信息
 
-
+proc wkeMoveToCenter*(webWindow: wkeWebView) {.importc, dynlib: dllname, cdecl.}
+  ## 窗口在父窗口或屏幕里居中
+ 
 
 # 初始化控件
 proc wkeInitialize*() {.importc, dynlib: dllname, cdecl.}
@@ -459,9 +464,9 @@ proc wkeLoadHTML*(webView: wkeWebView, html: cstring) {.importc, dynlib: dllname
 proc wkeLoadFile*(webView: wkeWebView, filename: cstring) {.importc, dynlib: dllname, cdecl.}
 proc wkeShowWindow*(webWindow: wkeWebView, showFlag: bool) {.importc, dynlib: dllname, cdecl.}
 # 创建一个wkeWebView，但不创建真窗口。一般用在离屏渲染里，如游戏
-proc wkeCreatewkeWebView*():wkeWebView {.importc, dynlib: dllname, cdecl.}
+proc wkeCreateWebView*():wkeWebView {.importc, dynlib: dllname, cdecl.}
 proc wkeSetHandle*(webView: wkeWebView, wnd: cint) {.importc, dynlib: dllname, cdecl.}
-proc wkeDestroywkeWebView*(webView: wkeWebView) {.importc, dynlib: dllname, cdecl.}
+proc wkeDestroyWebView*(webView: wkeWebView) {.importc, dynlib: dllname, cdecl.}
 # 通知无窗口模式下，wkeWebView开启透明模式
 proc wkeSetTransparent*(webView: wkeWebView, transparent: bool) {.importc, dynlib: dllname, cdecl.}
 
