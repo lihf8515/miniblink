@@ -19,10 +19,10 @@ type
 
 type
   wkeRect* {.bycopy.} = object
-    x*: cint
-    y*: cint
-    w*: cint
-    h*: cint
+    x*: int
+    y*: int
+    w*: int
+    h*: int
 
 type
   jsExecState* = pointer
@@ -44,7 +44,7 @@ type
 
 type
   wkeCookieVisitor* = proc (params: pointer; name: cstring; value: cstring;
-                         domain: cstring; path: cstring; secure: cint; httpOnly: cint; expires: ptr cint): bool {.
+                         domain: cstring; path: cstring; secure: int; httpOnly: int; expires: ptr int): bool {.
       cdecl.} ##  If |path| is non-empty only URLs at or below the path will get the cookie value.
              ##  If |secure| is true the cookie will only be sent for HTTPS requests.
              ##  If |httponly| is true the cookie will only be sent for HTTP requests.
@@ -63,10 +63,10 @@ type
 
 type
   wkeWindowFeatures* {.bycopy.} = object
-    x*: cint
-    y*: cint
-    width*: cint
-    height*: cint
+    x*: int
+    y*: int
+    width*: int
+    height*: int
     menuBarVisible*: bool
     statusBarVisible*: bool
     toolBarVisible*: bool
@@ -85,9 +85,9 @@ const
 
 type
   wkeMediaLoadInfo* {.bycopy.} = object
-    size*: cint
-    width*: cint
-    height*: cint
+    size*: int
+    width*: int
+    height*: int
     duration*: cdouble
 
 
@@ -102,10 +102,10 @@ type
   wkeURLChangedCallback2* = proc (webView: wkeWebView, param: pointer, frameId: wkeWebFrameHandle, url: wkeString) {.cdecl.}
 
 type
-  wkePaintUpdatedCallback* = proc (webView: wkeWebView, param: pointer, hdc: cint, x, y, cx, cy: cint) {.cdecl.}
+  wkePaintUpdatedCallback* = proc (webView: wkeWebView, param: pointer, hdc: int, x, y, cx, cy: int) {.cdecl.}
 
 type
-  wkePaintBitUpdatedCallback* = proc (webView: wkeWebView, param: pointer, buffer: pointer, r: wkeRect, width, height: cint) {.cdecl.}
+  wkePaintBitUpdatedCallback* = proc (webView: wkeWebView, param: pointer, buffer: pointer, r: wkeRect, width, height: int) {.cdecl.}
 
 type
   wkeAlertBoxCallback* = proc (webView: wkeWebView, param: pointer, msg: wkeString) {.cdecl.}
@@ -135,7 +135,7 @@ type
   wkeNetResponseCallback* = proc (webView: wkeWebView, param: pointer, url: cstring, job: wkeNetJob) {.cdecl.}
 
 type
-  wkeConsoleCallback* = proc (webView: wkeWebView, param: pointer, level: wkeConsoleLevel, message, sourceName: wkeString, sourceLine: cuint, stackTrace: wkeString) {.cdecl.}
+  wkeConsoleCallback* = proc (webView: wkeWebView, param: pointer, level: wkeConsoleLevel, message, sourceName: wkeString, sourceLine: int, stackTrace: wkeString) {.cdecl.}
 
 type
   wkeCallUiThread* = proc(webView: wkeWebView, param: pointer) {.cdecl.}
@@ -144,13 +144,13 @@ type
   wkeLoadUrlBeginCallback* = proc(webView: wkeWebView, param: pointer, url: cstring, job: wkeNetJob) {.cdecl.}
 
 type
-  wkeLoadUrlEndCallback* = proc(webView: wkeWebView, param: pointer, url: cstring, job: wkeNetJob, buf: pointer, length: cint) {.cdecl.}
+  wkeLoadUrlEndCallback* = proc(webView: wkeWebView, param: pointer, url: cstring, job: wkeNetJob, buf: pointer, length: int) {.cdecl.}
 
 type
-  wkeDidCreateScriptContextCallback* = proc(webView: wkeWebView, param: pointer, frameId: wkeWebFrameHandle, context: pointer, extensionGroup, worldId: cint) {.cdecl.}
+  wkeDidCreateScriptContextCallback* = proc(webView: wkeWebView, param: pointer, frameId: wkeWebFrameHandle, context: pointer, extensionGroup, worldId: int) {.cdecl.}
 
 type
-  wkeWillReleaseScriptContextCallback* = proc(webView: wkeWebView, param: pointer, frameId: wkeWebFrameHandle, context: pointer, worldId: cint) {.cdecl.}
+  wkeWillReleaseScriptContextCallback* = proc(webView: wkeWebView, param: pointer, frameId: wkeWebFrameHandle, context: pointer, worldId: int) {.cdecl.}
 
 type
   wkeWillMediaLoadCallback* = proc(webView: wkeWebView, param: pointer, url: cstring, info: wkeMediaLoadInfo) {.cdecl.}
@@ -158,7 +158,7 @@ type
 
 
 
-proc wkeVersion*(): cuint {.importc, dynlib: dllname, cdecl.}
+proc wkeVersion*(): int {.importc, dynlib: dllname, cdecl.}
   ## 获取目前api版本号
 
 proc wkeVersionString*(): cstring {.importc, dynlib: dllname, cdecl.}
@@ -167,7 +167,7 @@ proc wkeVersionString*(): cstring {.importc, dynlib: dllname, cdecl.}
 proc wkeSetWkeDllPath*(dllPath: cstring) {.importc, dynlib: dllname, cdecl.}
   ## 设置miniblink的全路径+文件名
 
-proc wkeGC*(webView: wkeWebView, delayMs: cint) {.importc, dynlib: dllname, cdecl.}
+proc wkeGC*(webView: wkeWebView, delayMs: int) {.importc, dynlib: dllname, cdecl.}
   ## 延迟让miniblink垃圾回收
 
 proc wkeEnableHighDPISupport*() {.importc, dynlib: dllname, cdecl.}
@@ -188,19 +188,19 @@ proc wkeGetTitle*(webView: wkeWebView): cstring {.importc, dynlib: dllname, cdec
 proc wkeResize*(webView: wkeWebView, width, height: int) {.importc, dynlib: dllname, cdecl.}
   ## 重新设置页面的宽高。如果wkeWebView是带窗口模式的，会设置真窗口的宽高
 
-proc wkeGetWidth*(webView: wkeWebView): cint {.importc, dynlib: dllname, cdecl.}
+proc wkeGetWidth*(webView: wkeWebView): int {.importc, dynlib: dllname, cdecl.}
   ## 获取页面宽度
 
-proc wkeGetHeight*(webView: wkeWebView): cint {.importc, dynlib: dllname, cdecl.}
+proc wkeGetHeight*(webView: wkeWebView): int {.importc, dynlib: dllname, cdecl.}
   ## 获取页面高度
 
-proc wkeGetContentWidth*(webView: wkeWebView): cint {.importc, dynlib: dllname, cdecl.}
+proc wkeGetContentWidth*(webView: wkeWebView): int {.importc, dynlib: dllname, cdecl.}
   ## 获取网页排版出来的宽度
 
-proc wkeGetContentHeight*(webView: wkeWebView): cint {.importc, dynlib: dllname, cdecl.}
+proc wkeGetContentHeight*(webView: wkeWebView): int {.importc, dynlib: dllname, cdecl.}
   ## 获取网页排版出来的高度
 
-proc wkeGetViewDC*(webView: wkeWebView): cint {.importc, dynlib: dllname, cdecl.}
+proc wkeGetViewDC*(webView: wkeWebView): int {.importc, dynlib: dllname, cdecl.}
   ## 获取webview的DC
 
 proc wkeCanGoBack*(webView: wkeWebView): bool {.importc, dynlib: dllname, cdecl.}
@@ -267,32 +267,32 @@ proc wkeSetCookieJarFullPath*(webView: wkeWebView, path: cstring) {.importc, dyn
 proc wkeSetLocalStorageFullPath*(webView: wkeWebView, path: cstring) {.importc, dynlib: dllname, cdecl.}
   ## 设置local storage的全路径。如“c:\mb\LocalStorage\cookie.dat”,这个接口只能接受目录。
 
-proc wkeSetMediaVolume*(webView: wkeWebView, volume: cfloat) {.importc, dynlib: dllname, cdecl.}
+proc wkeSetMediaVolume*(webView: wkeWebView, volume: float) {.importc, dynlib: dllname, cdecl.}
   ## 设置音量，未实现
 
-proc wkeGetMediaVolume*(webView: wkeWebView): cfloat {.importc, dynlib: dllname, cdecl.}
+proc wkeGetMediaVolume*(webView: wkeWebView): float {.importc, dynlib: dllname, cdecl.}
   ## 获取音量，未实现
 
-proc wkeFireMouseEvent*(webView: wkeWebView, message: cuint, x, y: cint, flags: cuint): bool {.importc, dynlib: dllname, cdecl.}
+proc wkeFireMouseEvent*(webView: wkeWebView, message: int, x, y: int, flags: int): bool {.importc, dynlib: dllname, cdecl.}
   ## 向mb发送鼠标消息
   ## message可取WM_MOUSELEAVE等Windows相关鼠标消息
   ## flags可取值有WKE_CONTROL、WKE_SHIFT、WKE_LBUTTON、WKE_MBUTTON、WKE_RBUTTON，可通过“或”操作并联
 
-proc wkeFireContextMenuEvent*(webView: wkeWebView, x, y: cint, flags: cuint): bool {.importc, dynlib: dllname, cdecl.}
+proc wkeFireContextMenuEvent*(webView: wkeWebView, x, y: int, flags: int): bool {.importc, dynlib: dllname, cdecl.}
   ## 向mb发送菜单消息（未实现）
 
-proc wkeFireMouseWheelEvent*(webView: wkeWebView, x, y, delta: cint, flags: cuint): bool {.importc, dynlib: dllname, cdecl.}
+proc wkeFireMouseWheelEvent*(webView: wkeWebView, x, y, delta: int, flags: int): bool {.importc, dynlib: dllname, cdecl.}
   ## 向mb发送滚轮消息，用法和参数类似wkeFireMouseEvent。
 
-proc wkeFireKeyUpEvent*(webView: wkeWebView, virtualKeyCode, flags: cuint, systemKey: bool): bool {.importc, dynlib: dllname, cdecl.}
+proc wkeFireKeyUpEvent*(webView: wkeWebView, virtualKeyCode, flags: int, systemKey: bool): bool {.importc, dynlib: dllname, cdecl.}
   ## 向mb发送WM_KEYUP消息
   ## virtualKeyCode见https://msdn.microsoft.com/en-us/library/windows/desktop/dd375731(v=vs.85).aspx
   ## flags可取值有WKE_REPEAT、WKE_EXTENDED，可通过“或”操作并联。
 
-proc wkeFireKeyDownEvent*(webView: wkeWebView, virtualKeyCode, flags: cuint, systemKey: bool): bool {.importc, dynlib: dllname, cdecl.}
+proc wkeFireKeyDownEvent*(webView: wkeWebView, virtualKeyCode, flags: int, systemKey: bool): bool {.importc, dynlib: dllname, cdecl.}
   ## 向mb发送WM_KEYDOWN消息
 
-proc wkeFireWindowsMessag*(webView: wkeWebView, hWnd: cint, message: cuint, wParam: cuint, lParam: cint, result: cint): bool {.importc, dynlib: dllname, cdecl.} 
+proc wkeFireWindowsMessag*(webView: wkeWebView, hWnd: int, message: int, wParam: int, lParam: int, result: int): bool {.importc, dynlib: dllname, cdecl.} 
   ## 向mb发送任意windows消息。不过目前mb主要用来处理光标相关。mb在无窗口模式下，要响应光标事件，需要通过本函数手动发送光标消息
 
 proc wkeSetFocus*(webView: wkeWebView) {.importc, dynlib: dllname, cdecl.}
@@ -444,7 +444,7 @@ proc wkeSetUserKeyValue*(webView: wkeWebView, key: cstring, value: pointer) {.im
 proc wkeGetUserKeyValue*(webView: wkeWebView, key: cstring): pointer {.importc, dynlib: dllname, cdecl.}
   ## 获取webView中指定key的value
 
-proc wkeGetCursorInfoType*(webView: wkeWebView): cint {.importc, dynlib: dllname, cdecl.}
+proc wkeGetCursorInfoType*(webView: wkeWebView): int {.importc, dynlib: dllname, cdecl.}
   ## 暂无接口描述信息
 
 proc wkeMoveToCenter*(webWindow: wkeWebView) {.importc, dynlib: dllname, cdecl.}
@@ -465,7 +465,7 @@ proc wkeLoadFile*(webView: wkeWebView, filename: cstring) {.importc, dynlib: dll
 proc wkeShowWindow*(webWindow: wkeWebView, showFlag: bool) {.importc, dynlib: dllname, cdecl.}
 # 创建一个wkeWebView，但不创建真窗口。一般用在离屏渲染里，如游戏
 proc wkeCreateWebView*():wkeWebView {.importc, dynlib: dllname, cdecl.}
-proc wkeSetHandle*(webView: wkeWebView, wnd: cint) {.importc, dynlib: dllname, cdecl.}
+proc wkeSetHandle*(webView: wkeWebView, wnd: int) {.importc, dynlib: dllname, cdecl.}
 proc wkeDestroyWebView*(webView: wkeWebView) {.importc, dynlib: dllname, cdecl.}
 # 通知无窗口模式下，wkeWebView开启透明模式
 proc wkeSetTransparent*(webView: wkeWebView, transparent: bool) {.importc, dynlib: dllname, cdecl.}
