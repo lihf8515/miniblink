@@ -15,30 +15,38 @@ var wv: wkeWebView
 var wkeWindowStyle = WKE_WINDOW_TYPE_CONTROL
 wv = wkeCreateWebWindow(wkeWindowStyle, frame.mHwnd, 0,0,wndSize.width,wndSize.height,"测试")
 wv.wkeLoadURL("file:///" & getCurrentDir() & "/html/login.html")
-wv.wkeShowWindow(true)
+wv.wkeShowWindow(false)
+var flagShow = false
 
-# 标题改变时的回调处理，注意是给c语言调用的，所以一定要加{.cdecl.}
+proc wkeOnPaintUpdatedCallback(webView: wkeWebView, param: pointer, hdc, x, y, cx, cy: int) {.cdecl.} =
+  ## 页面重绘时的回调处理
+  if flagShow:
+    flagShow = false
+    webView.wkeShowWindow(true)
+    frame.show()
+
+wv.wkeOnPaintUpdated(wkeOnPaintUpdatedCallback, cast[pointer](frame))
+
+proc wkeDocumentReadyCallback(webView: wkeWebView, param: pointer) {.cdecl.} =
+  ## 页面加载完成后的回调处理
+  flagShow = true
+
+wv.wkeOnDocumentReady(wkeDocumentReadyCallback, cast[pointer](frame))
+
 proc wkeOnTitleChangedCallBack(webView: wkeWebView, param: pointer, title: wkeString) {.cdecl.} =
+  ## 标题改变时的回调处理，注意是给c语言调用的，所以一定要加{.cdecl.}
   frame.title = $webView.wkeGetTitle()
 
 wv.wkeOnTitleChanged(wkeOnTitleChangedCallBack, cast[pointer](frame))
 
-# 页面加载完成后的回调处理，显示页面前还是有短暂的白色
-proc wkeDocumentReadyCallback(webView: wkeWebView, param: pointer) {.cdecl.} =
-  for i in countup(0, 255):
-    frame.setTransparent(i)
-  frame.show()
-
-wv.wkeOnDocumentReady(wkeDocumentReadyCallback, cast[pointer](frame))
-
-# 页面打开时回调处理
 proc wkeOnNavigationCallback(webView: wkeWebView, param: pointer, navigationType: wkeNavigationType, url: wkeString): bool {.cdecl.} =
+  ## 页面打开时回调处理
   case $url.wkeGetString()
   of "xcm:close":
     wv.wkeDestroyWebWindow()
     frame.close()
     return false
-  else: return true    
+  else: return true
 
 wv.wkeOnNavigation(wkeOnNavigationCallback, cast[pointer](frame))
 
