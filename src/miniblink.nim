@@ -88,8 +88,27 @@ type
     size*: int
     width*: int
     height*: int
-    duration*: cdouble
+    duration*: float64
 
+type
+  wkeProxyType* = enum
+    WKE_PROXY_NONE, WKE_PROXY_HTTP, WKE_PROXY_SOCKS4, WKE_PROXY_SOCKS4A,
+    WKE_PROXY_SOCKS5, WKE_PROXY_SOCKS5HOSTNAME
+  wkeProxy* {.bycopy.} = object
+    `type`*: wkeProxyType
+    hostname*: array[100, char]
+    port*: int
+    username*: array[50, char]
+    password*: array[50, char]
+
+type
+  wkeSettings* {.bycopy.} = object
+    proxy*: wkeProxy
+    mask*: int
+
+  wkeViewSettings* {.bycopy.} = object
+    size*: int
+    bgColor*: int
 
 
 type
@@ -155,7 +174,11 @@ type
 type
   wkeWillMediaLoadCallback* = proc(webView: wkeWebView, param: pointer, url: cstring, info: wkeMediaLoadInfo) {.cdecl.}
 
+type
+  wkeWindowClosingCallback* =  proc(webWindow: wkeWebView, param: pointer): bool {.cdecl.}
 
+type
+  wkeWindowDestroyCallback* =  proc(webWindow: wkeWebView, param: pointer): bool {.cdecl.}
 
 
 proc wkeVersion*(): int {.importc, dynlib: dllname, cdecl.}
@@ -200,8 +223,30 @@ proc wkeGetContentWidth*(webView: wkeWebView): int {.importc, dynlib: dllname, c
 proc wkeGetContentHeight*(webView: wkeWebView): int {.importc, dynlib: dllname, cdecl.}
   ## 获取网页排版出来的高度
 
+proc wkePaint2*(webView: wkeWebView, bits: pointer, bufWid, bufHei, xDst, yDst, w, h, xSrc, ySrc: int, bCopyAlpha: bool) {.importc, dynlib: dllname, cdecl.}
+  ## 暂无接口描述信息
+  ## bits 外部申请并传递给mb的buffer，大小是bufWid * bufHei * 4 字节
+  ## bufWid bits的宽
+  ## bufHei bits的高
+  ## xDst 绘制到bits的哪个坐标
+  ## yDst 绘制到bits的哪个坐标
+  ## w mb需要取的画面的起始坐标
+  ## h mb需要取的画面的起始坐标
+  ## xSrc mb需要取的画面的起始坐标
+  ## ySrc mb需要取的画面的起始坐标
+  ## bCopyAlpha 是否拷贝画面的透明度值
+  ## 此函数一般给3d游戏使用。另外频繁使用此接口并拷贝像素有性能问题。最好用wkeGetViewDC再去拷贝dc
+
+proc wkePaint*(webView: wkeWebView, bits: pointer, pitch: int) {.importc, dynlib: dllname, cdecl.}
+  ## 获取页面的像素的简化版函数。
+  ## bits 外部申请并传递给mb的buffer，大小是webview宽度 * 高度 * 4 字节。
+  ## pitch 填0即可。这个参数玩过directX的人应该懂
+
 proc wkeGetViewDC*(webView: wkeWebView): int {.importc, dynlib: dllname, cdecl.}
   ## 获取webview的DC
+
+proc wkeGetHostHWND*(webView: wkeWebView): int {.importc, dynlib: dllname, cdecl.}
+  ## 获取webveiw对应的窗口句柄。实现和wkeGetWindowHandle完全相同 
 
 proc wkeCanGoBack*(webView: wkeWebView): bool {.importc, dynlib: dllname, cdecl.}
   ## 页面是否可以后退
@@ -273,15 +318,15 @@ proc wkeSetMediaVolume*(webView: wkeWebView, volume: float) {.importc, dynlib: d
 proc wkeGetMediaVolume*(webView: wkeWebView): float {.importc, dynlib: dllname, cdecl.}
   ## 获取音量，未实现
 
-proc wkeFireMouseEvent*(webView: wkeWebView, message: int, x, y: int, flags: int): bool {.importc, dynlib: dllname, cdecl.}
+proc wkeFireMouseEvent*(webView: wkeWebView, message, x, y, flags: int): bool {.importc, dynlib: dllname, cdecl.}
   ## 向mb发送鼠标消息
   ## message可取WM_MOUSELEAVE等Windows相关鼠标消息
   ## flags可取值有WKE_CONTROL、WKE_SHIFT、WKE_LBUTTON、WKE_MBUTTON、WKE_RBUTTON，可通过“或”操作并联
 
-proc wkeFireContextMenuEvent*(webView: wkeWebView, x, y: int, flags: int): bool {.importc, dynlib: dllname, cdecl.}
+proc wkeFireContextMenuEvent*(webView: wkeWebView, x, y, flags: int): bool {.importc, dynlib: dllname, cdecl.}
   ## 向mb发送菜单消息（未实现）
 
-proc wkeFireMouseWheelEvent*(webView: wkeWebView, x, y, delta: int, flags: int): bool {.importc, dynlib: dllname, cdecl.}
+proc wkeFireMouseWheelEvent*(webView: wkeWebView, x, y, delta, flags: int): bool {.importc, dynlib: dllname, cdecl.}
   ## 向mb发送滚轮消息，用法和参数类似wkeFireMouseEvent。
 
 proc wkeFireKeyUpEvent*(webView: wkeWebView, virtualKeyCode, flags: int, systemKey: bool): bool {.importc, dynlib: dllname, cdecl.}
@@ -292,7 +337,7 @@ proc wkeFireKeyUpEvent*(webView: wkeWebView, virtualKeyCode, flags: int, systemK
 proc wkeFireKeyDownEvent*(webView: wkeWebView, virtualKeyCode, flags: int, systemKey: bool): bool {.importc, dynlib: dllname, cdecl.}
   ## 向mb发送WM_KEYDOWN消息
 
-proc wkeFireWindowsMessag*(webView: wkeWebView, hWnd: int, message: int, wParam: int, lParam: int, result: int): bool {.importc, dynlib: dllname, cdecl.} 
+proc wkeFireWindowsMessag*(webView: wkeWebView, hWnd, message, wParam, lParam, result: int): bool {.importc, dynlib: dllname, cdecl.} 
   ## 向mb发送任意windows消息。不过目前mb主要用来处理光标相关。mb在无窗口模式下，要响应光标事件，需要通过本函数手动发送光标消息
 
 proc wkeSetFocus*(webView: wkeWebView) {.importc, dynlib: dllname, cdecl.}
@@ -322,10 +367,10 @@ proc wkeWake*(webView: wkeWebView) {.importc, dynlib: dllname, cdecl.}
 proc wkeIsAwake*(webView: wkeWebView):bool {.importc, dynlib: dllname, cdecl.}
   ## 暂未实现
 
-proc wkeSetZoomFactor*(webView: wkeWebView, factor: cfloat) {.importc, dynlib: dllname, cdecl.}
+proc wkeSetZoomFactor*(webView: wkeWebView, factor: float) {.importc, dynlib: dllname, cdecl.}
   ## 设置页面缩放系数，默认是1
 
-proc wkeGetZoomFactor*(webView: wkeWebView): cfloat {.importc, dynlib: dllname, cdecl.}
+proc wkeGetZoomFactor*(webView: wkeWebView): float {.importc, dynlib: dllname, cdecl.}
   ## 暂无接口描述信息
 
 proc wkeSetEditable*(webView: wkeWebView, editable: bool) {.importc, dynlib: dllname, cdecl.}
@@ -447,27 +492,75 @@ proc wkeGetUserKeyValue*(webView: wkeWebView, key: cstring): pointer {.importc, 
 proc wkeGetCursorInfoType*(webView: wkeWebView): int {.importc, dynlib: dllname, cdecl.}
   ## 暂无接口描述信息
 
+proc wkeCreateWebView*():wkeWebView {.importc, dynlib: dllname, cdecl.}
+  ## 创建一个webview，但不创建真窗口。一般用在离屏渲染里，如游戏
+
+proc wkeDestroyWebView*(webView: wkeWebView) {.importc, dynlib: dllname, cdecl.}
+  ## 效果同wkeDestroyWebWindow
+
+proc wkeCreateWebWindow*(style: wkeWindowType, parent, x, y, width, height: int, cstring=""): wkeWebView {.importc, dynlib: dllname, cdecl.}
+  ## 创建一个带真实窗口的wkewkeWebView
+
+proc wkeDestroyWebWindow*(webWindow: wkeWebView) {.importc, dynlib: dllname, cdecl.}
+  ## 销毁wkewkeWebView对应的所有数据结构，包括真实窗口等
+
+proc wkeGetWindowHandle*(webWindow: wkeWebView): int {.importc, dynlib: dllname, cdecl.}
+  ## 获取窗口对应的真实句柄。和wkeGetHostHWND的实现完全相同 
+
+proc wkeOnWindowClosing*(webWindow: wkeWebView, callback: wkeWindowClosingCallback, param: pointer) {.importc, dynlib: dllname, cdecl.}
+  ## wkeWebView如果是真窗口模式，则在收到WM_CLODE消息时触发此回调。可以通过在回调中返回false拒绝关闭窗口
+  
+proc wkeOnWindowDestroy*(webWindow: wkeWebView, callback: wkeWindowDestroyCallback, param: pointer) {.importc, dynlib: dllname, cdecl.}
+  ## 窗口即将被销毁时触发回调。不像wkeOnWindowClosing，这个操作无法取消
+
+proc wkeShowWindow*(webWindow: wkeWebView, showFlag: bool) {.importc, dynlib: dllname, cdecl.}
+  ## 显示窗口
+
+proc wkeEnableWindow*(webWindow: wkeWebView, enableFlag: bool) {.importc, dynlib: dllname, cdecl.}
+  ## 暂无接口描述信息 
+
+proc wkeMoveWindow*(webWindow: wkeWebView, x, y, width, height: int) {.importc, dynlib: dllname, cdecl.}
+  ## 暂无接口描述信息 
+
 proc wkeMoveToCenter*(webWindow: wkeWebView) {.importc, dynlib: dllname, cdecl.}
   ## 窗口在父窗口或屏幕里居中
- 
 
-# 初始化控件
+proc wkeResizeWindow*(webWindow: wkeWebView, width, height: int) {.importc, dynlib: dllname, cdecl.}
+  ## resize窗口，和wkeResize效果一样 
+
+proc wkeSetWindowTitle*(webWindow: wkeWebView, title: cstring) {.importc, dynlib: dllname, cdecl.}
+  ## 暂无接口描述信息 
+
+proc wkeSetDeviceParameter*(webView: wkeWebView, device, paramStr: cstring, paramInt: int, paramFloat:float) {.importc, dynlib: dllname, cdecl.}
+  ## 设置mb模拟的硬件设备环境。主要用在伪装手机设备场景 
+
+proc wkeInit*() {.importc, dynlib: dllname, cdecl.}
+  ## 初始化整个mb。此句必须在所有mb api前最先调用。并且所有mb api必须和调用wkeInit的线程为同个线程 
+
 proc wkeInitialize*() {.importc, dynlib: dllname, cdecl.}
-# 创建一个带真实窗口的wkewkeWebView
-proc wkeCreateWebWindow*(style: wkeWindowType, parent:int, x, y, width, height: int, cstring=""): wkeWebView {.importc, dynlib: dllname, cdecl.}
-# 销毁wkewkeWebView对应的所有数据结构，包括真实窗口等
-proc wkeDestroyWebWindow*(webWindow: wkeWebView) {.importc, dynlib: dllname, cdecl.}
-# 加载url。url必须是网络路径，如http://qq.com/
+  ## 效果和wkeInit一模一样
+
+proc wkeSetProxy*(proxy: wkeProxy) {.importc, dynlib: dllname, cdecl.}
+  ## 设置整个mb的代码。此句是全局生效 
+
+proc wkeSetViewProxy*(webView: wkeWebView, proxy: wkeProxy) {.importc, dynlib: dllname, cdecl.}
+  ## 设置整个mb的代码。此句是针对特定webview生效 
+
+proc wkeConfigure*(settings: wkeSettings) {.importc, dynlib: dllname, cdecl.}
+  ## 设置一些配置项 
+
+proc wkeIsInitialize*() {.importc, dynlib: dllname, cdecl.}
+  ## 暂无接口描述信息 
+
 proc wkeLoadURL*(webView: wkeWebView, url: cstring) {.importc, dynlib: dllname, cdecl.}
-# 加载一段html。如果html里有相对路径，则是相对exe所在目录的路径
+  ## 加载url。url必须是网络路径，如http://qq.com/
+
 proc wkeLoadHTML*(webView: wkeWebView, html: cstring) {.importc, dynlib: dllname, cdecl.}
+  ## 加载一段html。如果html里有相对路径，则是相对exe所在目录的路径
+
 proc wkeLoadFile*(webView: wkeWebView, filename: cstring) {.importc, dynlib: dllname, cdecl.}
-proc wkeShowWindow*(webWindow: wkeWebView, showFlag: bool) {.importc, dynlib: dllname, cdecl.}
-# 创建一个wkeWebView，但不创建真窗口。一般用在离屏渲染里，如游戏
-proc wkeCreateWebView*():wkeWebView {.importc, dynlib: dllname, cdecl.}
+
 proc wkeSetHandle*(webView: wkeWebView, wnd: int) {.importc, dynlib: dllname, cdecl.}
-proc wkeDestroyWebView*(webView: wkeWebView) {.importc, dynlib: dllname, cdecl.}
-# 通知无窗口模式下，wkeWebView开启透明模式
+
 proc wkeSetTransparent*(webView: wkeWebView, transparent: bool) {.importc, dynlib: dllname, cdecl.}
-
-
+  ## 通知无窗口模式下，wkeWebView开启透明模式
