@@ -2,16 +2,12 @@
 #
 #              Nim语言的miniblink封装
 #
-#  这只是对miniblink的简单封装，有一部分接口尚未封装进来。
+#  这是对miniblink的封装。由于miniblink仅支持windows系统，
+#  所以这个封装库也只支持windows系统。
 #  
 #====================================================================
 
-when defined(windows):
-  const dllname = "node.dll"
-elif defined(macosx):
-  const dllname = "node.dylib"
-else:
-  const dllname = "node.so"
+const dllname = "node.dll"
 
 type
   wkeWindowType* = enum
@@ -25,16 +21,10 @@ type
     h*: int
 
 type
-  jsExecState* = pointer
-
-type
   wkeWebFrameHandle* = pointer
 
 type
   wkeNetJob* = pointer
-
-type
-  jsValue* = int64
 
 type
   tagWkeWebView* {.bycopy.} = object
@@ -110,6 +100,87 @@ type
     size*: int
     bgColor*: int
 
+type
+  wkeMemBuf* {.bycopy.} = object
+    unuse*: int
+    data*: pointer
+    length*: csize
+
+type
+  wkeRequestType* = enum
+    kWkeRequestTypeInvalidation, kWkeRequestTypeGet, kWkeRequestTypePost,
+    kWkeRequestTypePut
+
+type
+  wkeHttBodyElementType* = enum
+    wkeHttBodyElementTypeData, wkeHttBodyElementTypeFile
+
+type
+  wkePostBodyElement* {.bycopy.} = object
+    size*: int
+    `type`*: wkeHttBodyElementType
+    data*: ptr wkeMemBuf
+    filePath*: wkeString
+    fileStart*: int64
+    fileLength*: int64       ##  -1 means to the end of the file.
+
+type
+  wkePostBodyElements* {.bycopy.} = object
+    size*: int
+    element*: ptr ptr wkePostBodyElement
+    elementSize*: csize
+    isDirty*: bool
+
+type
+  jsExecState* = pointer
+
+type
+  jsValue* = int64
+
+type
+  jsType* = enum
+    JSTYPE_NUMBER, JSTYPE_STRING, JSTYPE_BOOLEAN, JSTYPE_OBJECT, JSTYPE_FUNCTION,
+    JSTYPE_UNDEFINED, JSTYPE_ARRAY, JSTYPE_NULL
+
+type
+  jsKeys* {.bycopy.} = object
+    length*: int
+    keys*: cstringArray
+
+type
+  jsGetPropertyCallback* = proc(es: jsExecState, obj: jsValue, propertyName: cstring): jsValue {.cdecl.}
+
+type
+  jsSetPropertyCallback* = proc(es: jsExecState, obj: jsValue, propertyName: cstring, value: jsValue): bool {.cdecl.}
+
+type
+  jsCallAsFunctionCallback* = proc(es: jsExecState, obj, args: jsValue, argCount: int): jsValue {.cdecl.}
+
+type
+  tagjsData* {.bycopy.} = object
+
+type
+  jsFinalizeCallback* = proc(data: ptr tagjsData) {.cdecl.}
+
+type
+  jsData* {.bycopy.} = object
+    typeName*: array[100, char]
+    propertyGet*: jsGetPropertyCallback
+    propertySet*: jsSetPropertyCallback
+    finalize*: jsFinalizeCallback
+    callAsFunction*: jsCallAsFunctionCallback
+
+type
+  jsExceptionInfo* {.bycopy.} = object
+    message*: cstring          ##  Returns the exception message.
+    sourceLine*: cstring       ##  Returns the line of source code that the exception occurred within.
+    scriptResourceName*: cstring ##  Returns the resource name for the script from where the function causing the error originates.
+    lineNumber*: int          ##  Returns the 1-based number of the line where the error occurred or 0 if the line number is unknown.
+    startPosition*: int       ##  Returns the index within the script of the first character where the error occurred.
+    endPosition*: int         ##  Returns the index within the script of the last character where the error occurred.
+    startColumn*: int         ##  Returns the index within the line of the first character where the error occurred.
+    endColumn*: int           ##  Returns the index within the line of the last character where the error occurred.
+    callstackString*: cstring
 
 type
   wkeTitleChangedCallback* = proc (webView: wkeWebView, param: pointer, title: wkeString) {.cdecl.}
@@ -179,6 +250,15 @@ type
 
 type
   wkeWindowDestroyCallback* =  proc(webWindow: wkeWebView, param: pointer): bool {.cdecl.}
+
+type
+  wkeOnNetGetFaviconCallback* = proc(webView: wkeWebView, param: pointer, url: cstring, buf: wkeMemBuf) {.cdecl.}
+
+type
+  jsNativeFunction* = proc(es: jsExecState): jsValue {.fastcall.}
+
+type
+  wkeJsNativeFunction* = proc(es: jsExecState, param: pointer): jsValue {.cdecl.}
 
 
 proc wkeVersion*(): int {.importc, dynlib: dllname, cdecl.}
@@ -552,15 +632,261 @@ proc wkeConfigure*(settings: wkeSettings) {.importc, dynlib: dllname, cdecl.}
 proc wkeIsInitialize*() {.importc, dynlib: dllname, cdecl.}
   ## 暂无接口描述信息 
 
+proc wkeSetMemoryCacheEnable*(webView: wkeWebView, b: bool) {.importc, dynlib: dllname, cdecl.}
+  ## 开启内存缓存。网页的图片等都会在内存缓存里。关闭后，内存使用会降低一些，但容易引起一些问题，如果不懂怎么用，最好别开 
+
+proc wkeSetTouchEnabled*(webView: wkeWebView, b: bool) {.importc, dynlib: dllname, cdecl.}
+  ## 开启触屏模式。开启后，鼠标消息将自动转换成触屏消息 
+
+proc wkeSetMouseEnabled*(webView: wkeWebView, b: bool) {.importc, dynlib: dllname, cdecl.}
+  ## 开启关闭鼠标消息，可以在开启触屏后，关闭鼠标消息 
+
+proc wkeSetNavigationToNewWindowEnable*(webView: wkeWebView, b: bool) {.importc, dynlib: dllname, cdecl.}
+  ## 关闭后，点a标签将不会弹出新窗口，而是在本窗口跳转 
+
+proc wkeSetCspCheckEnable*(webView: wkeWebView, b: bool) {.importc, dynlib: dllname, cdecl.}
+  ## 关闭后，跨域检查将被禁止，此时可以做任何跨域操作，如跨域ajax，跨域设置iframe
+
+proc wkeSetNpapiPluginsEnabled*(webView: wkeWebView, b: bool) {.importc, dynlib: dllname, cdecl.}
+  ## 开启关闭npapi插件，如flash 
+
+proc wkeSetHeadlessEnabled*(webView: wkeWebView, b: bool) {.importc, dynlib: dllname, cdecl.}
+  ## 开启无头模式。开启后，将不会渲染页面，提升了网页性能
+
+proc wkeSetDebugConfig*(webView: wkeWebView, debugString, param: cstring) {.importc, dynlib: dllname, cdecl.}
+  ## 开启一些实验性选项。 
+  ## debugString 
+  ## "showDevTools"开启开发者工具，此时param要填写开发者工具的资源路径，如file:///c:/miniblink-release/front_end/inspector.html。注意param此时必须是utf8编码
+  ## "wakeMinInterval"设置帧率，默认值是10，值越大帧率越低。
+  ## "drawMinInterval"设置帧率，默认值是3，值越大帧率越低。
+  ## "antiAlias"设置抗锯齿渲染。param必须设置为"1"。
+  ## "minimumFontSize"最小字体。
+  ## "minimumLogicalFontSize"最小逻辑字体。
+  ## "defaultFontSize"默认字体。
+  ## "defaultFixedFontSize"默认fixed字体。
+  ## "defaultFixedFontSize"默认fixed字体。
+  ## "defaultFontSize"默认字体。
+  ## "defaultFixedFontSize"默认fixed字体。
+  ## "imageEnable" 是否打开无图模式。param为"0"表示开启无图模式
+  ## "jsEnable" 是否禁用js。param为"0"表示禁用
+
+proc wkeSetHandle*(webView: wkeWebView, wnd: int) {.importc, dynlib: dllname, cdecl.}
+  ## 设置wkeWebView对应的窗口句柄
+  ## 只有在无窗口模式下才能使用。如果是用wkeCreateWebWindow创建的webview，已经自带窗口句柄了。
+
+proc wkeSetHandleOffset*(webView: wkeWebView, x, y: int) {.importc, dynlib: dllname, cdecl.}
+  ## 设置无窗口模式下的绘制偏移。在某些情况下（主要是离屏模式），绘制的地方不在真窗口的(0, 0)处，就需要手动调用此接口 
+
+proc wkeSetViewSettings*(webView: wkeWebView, settings: wkeViewSettings) {.importc, dynlib: dllname, cdecl.}
+  ## 设置一些webview相关的设置。目前只有背景颜色可以设置 
+
+proc wkeSetTransparent*(webView: wkeWebView, transparent: bool) {.importc, dynlib: dllname, cdecl.}
+  ## 通知无窗口模式下，wkeWebView开启透明模式
+
+proc wkeIsTransparent*(webView: wkeWebView) {.importc, dynlib: dllname, cdecl.}
+  ## 判断窗口是否是分层窗口（layer window） 
+
+proc wkeSetUserAgent*(webView: wkeWebView, userAgent: cstring) {.importc, dynlib: dllname, cdecl.}
+  ## 设置webview的UA 
+
+proc wkeSetUserAgentW*(webView: wkeWebView, userAgent: cstring) {.importc, dynlib: dllname, cdecl.}
+  ## 暂无接口描述信息 
+
+proc wkeGetUserAgent*(webView: wkeWebView): cstring {.importc, dynlib: dllname, cdecl.}
+  ## 获取webview的UA 
+
 proc wkeLoadURL*(webView: wkeWebView, url: cstring) {.importc, dynlib: dllname, cdecl.}
   ## 加载url。url必须是网络路径，如http://qq.com/
+
+proc wkeLoadW*(webView: wkeWebView, url: cstring) {.importc, dynlib: dllname, cdecl.}
+  ## 暂无接口描述信息 
 
 proc wkeLoadHTML*(webView: wkeWebView, html: cstring) {.importc, dynlib: dllname, cdecl.}
   ## 加载一段html。如果html里有相对路径，则是相对exe所在目录的路径
 
+proc wkeLoadHtmlWithBaseUrl*(webView: wkeWebView, html, baseUrl: cstring) {.importc, dynlib: dllname, cdecl.}
+  ## 加载一段html，但可以指定baseURL，也就是相对于哪个目录的url 
+
 proc wkeLoadFile*(webView: wkeWebView, filename: cstring) {.importc, dynlib: dllname, cdecl.}
+  ## 加载文件
 
-proc wkeSetHandle*(webView: wkeWebView, wnd: int) {.importc, dynlib: dllname, cdecl.}
+proc wkeGetURL*(webView: wkeWebView): cstring {.importc, dynlib: dllname, cdecl.}
+  ## 获取webview主frame的url 
 
-proc wkeSetTransparent*(webView: wkeWebView, transparent: bool) {.importc, dynlib: dllname, cdecl.}
-  ## 通知无窗口模式下，wkeWebView开启透明模式
+proc wkeNetSetHTTPHeaderField*(jobPtr: pointer, key, value: cstring, response: bool) {.importc, dynlib: dllname, cdecl.}
+  ## 在wkeOnLoadUrlBegin回调里调用，表示设置http请求（或者file:///协议）的 http header field。response一直要被设置成false 
+
+proc wkeNetSetMIMEType*(jobPtr: pointer, types: cstring) {.importc, dynlib: dllname, cdecl.}
+  ## 在wkeOnLoadUrlBegin回调里调用，表示设置http请求的MIME type 
+
+proc wkeNetGetMIMEType*(jobPtr: pointer, mime: wkeString): cstring {.importc, dynlib: dllname, cdecl.}
+  ## 暂无接口描述信息 
+
+proc wkeNetSetData*(jobPtr, buf: pointer, len: int) {.importc, dynlib: dllname, cdecl.}
+  ## 在wkeOnLoadUrlEnd里被调用，表示设置hook后缓存的数据 
+
+proc wkeNetCancelRequest*(jobPtr: pointer) {.importc, dynlib: dllname, cdecl.}
+  ## 在wkeOnLoadUrlBegin回调里调用，设置后，此请求将被取消
+
+proc wkeNetGetFavicon*(webView: wkeWebView, callback: wkeOnNetGetFaviconCallback, param: pointer): int {.importc, dynlib: dllname, cdecl.}
+  ## 获取favicon。此接口必须在wkeOnLoadingFinish回调里调用
+
+proc wkeNetHoldJobToAsynCommit*(jobPtr: pointer): bool {.importc, dynlib: dllname, cdecl.}
+  ## 高级用法。在wkeOnLoadUrlBegin回调里调用。 有时候，wkeOnLoadUrlBegin里拦截到一个请求后，不能马上判断出结果。
+  ## 此时可以调用本接口，然后在异步的某个时刻，调用wkeNetContinueJob来让此请求继续进行
+  ## TRUE代表成功，FALSE代表调用失败，不能再调用wkeNetContinueJob了
+
+proc wkeNetGetRequestMethod*(jobPtr: pointer): wkeRequestType {.importc, dynlib: dllname, cdecl.}
+  ## 获取此请求的method，如post还是get
+
+proc wkeNetGetPostBody*(jobPtr: pointer): wkePostBodyElements {.importc, dynlib: dllname, cdecl.}
+  ## 获取此请求中的post数据。只有当请求是post时才有效果
+
+proc wkeNetCreatePostBodyElements*(webView: wkeWebView, length: csize_t): wkePostBodyElements {.importc, dynlib: dllname, cdecl.}
+  ## 暂无接口描述信息
+
+proc wkeNetFreePostBodyElements*(elements: wkePostBodyElements) {.importc, dynlib: dllname, cdecl.}
+  ## 暂无接口描述信息
+
+proc wkeNetCreatePostBodyElement*(webView: wkeWebView): wkePostBodyElement {.importc, dynlib: dllname, cdecl.}
+  ## 暂无接口描述信息
+
+proc wkeNetFreePostBodyElement*(element: wkePostBodyElement) {.importc, dynlib: dllname, cdecl.}
+  ## 这四个接口要结合起来使用。 当wkeOnLoadUrlBegin里判断是post时，可以通过wkeNetCreatePostBodyElements来创建一个新的post数据包。 然后wkeNetFreePostBodyElements来释放原post数据
+
+proc jsArgCount*(es: jsExecState): int {.importc, dynlib: dllname, cdecl.}
+  ## 获取es里存的参数个数。一般是在绑定的js调用c++回调里使用，判断js传递了多少参数给c++
+
+proc jsArgType*(es: jsExecState, argIdx: int): jsType {.importc, dynlib: dllname, cdecl.}
+  ## 判断第argIdx个参数的参数类型。argIdx从是个0开始计数的值。如果超出jsArgCount返回的值，将发生崩溃
+
+proc jsArg*(es: jsExecState, argIdx: int): jsValue {.importc, dynlib: dllname, cdecl.}
+  ## 获取第argIdx对应的参数的jsValue值
+
+proc jsTypeOf*(v: jsValue): jsType {.importc, dynlib: dllname, cdecl.}
+  ## 获取v对应的类型
+
+proc jsIsNumber*(v: jsValue): bool {.importc, dynlib: dllname, cdecl.}
+  ## 判断v是否为数字
+
+proc jsIsString*(v: jsValue): bool {.importc, dynlib: dllname, cdecl.}
+  ## 判断v是否为字符串
+
+proc jsIsBoolean*(v: jsValue): bool {.importc, dynlib: dllname, cdecl.}
+  ## 判断v是否为布尔值 
+
+proc jsIsObject*(v: jsValue): bool {.importc, dynlib: dllname, cdecl.}
+  ## 判断v是否为对象 
+
+proc jsIsTrue*(v: jsValue): bool {.importc, dynlib: dllname, cdecl.}
+  ## 如果v本身是个布尔值，返回对应的true或者false；如果是个对象（JSTYPE_OBJECT），返回false（这里注意）
+
+proc jsIsFalse*(v: jsValue): bool {.importc, dynlib: dllname, cdecl.}
+  ## 等价于!jsIsTrue(v) 
+
+proc jsToInt*(es: jsExecState, v: jsValue): int {.importc, dynlib: dllname, cdecl.}
+  ## 如果v是个整形或者浮点，返回相应值（如果是浮点，返回取整后的值）。如果是其他类型，返回0（这里注意）
+
+proc jsToDouble*(es: jsExecState, v: jsValue): float64 {.importc, dynlib: dllname, cdecl.}
+  ## 如果v是个浮点形，返回相应值。如果是其他类型，返回0.0（这里注意）
+
+proc jsToTempStringW*(es: jsExecState, v: jsValue): cstring {.importc, dynlib: dllname, cdecl.}
+  ## 如果v是个字符串，返回相应值。如果是其他类型，返回L""（这里注意） 另外，返回的字符串不需要外部释放。mb会在下一帧自动释放
+
+proc jsToTempString*(es: jsExecState, v: jsValue): cstring {.importc, dynlib: dllname, cdecl.}
+  ## 同上
+
+proc jsToString*(es: jsExecState, v: jsValue): cstring {.importc, dynlib: dllname, cdecl.}
+  ## 同上，只是返回的是utf8编码
+
+proc jsToStringW*(es: jsExecState, v: jsValue): cstring {.importc, dynlib: dllname, cdecl.}
+  ## 暂无接口描述信息
+
+proc jsInt*(n: int): jsValue {.importc, dynlib: dllname, cdecl.}
+  ## 创建建一个int型的jsValue，注意是创建
+
+proc jsString*(es: jsExecState, str: cstring): jsValue {.importc, dynlib: dllname, cdecl.}
+  ## 构建一个utf8编码的字符串的的jsValue。str会在内部拷贝保存，注意是创建
+
+proc jsArrayBuffer*(es: jsExecState, buffer: cstring, size: csize_t): jsValue {.importc, dynlib: dllname, cdecl.}
+  ## 构建一个js的arraybuffer类型的jaValue。主要用来处理一些二进制数据，注意是创建
+
+proc jsGetArrayBuffer*(es: jsExecState, value: jsValue): wkeMemBuf {.importc, dynlib: dllname, cdecl.}
+  ## 获取一个js的arraybuffer类型的数据。主要用来处理一些二进制数据
+
+proc jsEmptyObject*(es: jsExecState): jsValue {.importc, dynlib: dllname, cdecl.}
+  ## 构建一个临时js object的jsValue，注意是创建
+
+proc jsEvalW*(es: jsExecState, str: cstring): jsValue {.importc, dynlib: dllname, cdecl.}
+  ## 执行一段js，并返回值。
+  ## str的代码会在mb内部自动被包裹在一个function(){}中。所以使用的变量会被隔离 注意：要获取返回值，请写return。这和wke不太一样。wke不需要写retrun
+
+proc jsEvalExW*(es: jsExecState, str: cstring, isInClosure: bool): jsValue {.importc, dynlib: dllname, cdecl.}
+  ## 和上述接口的区别是，isInClosure表示是否要包裹一层function(){}。jsEvalW相当于jsEvalExW(es, str, false)
+  ## 如果需要返回值，在isInClosure为true时，需要写return，为false则不用
+
+proc jsCall*(es: jsExecState, function, thisValue: jsValue, args: pointer, argCount: int): jsValue {.importc, dynlib: dllname, cdecl.}
+  ## 调用一个function对应的js函数。如果此js函数是成员函数，则需要填thisValue。 否则可以传jsUndefined。args是个数组，个数由argCount控制。 function可以是从js里取的，也可以是自行构造的
+
+proc jsCallGlobal*(es: jsExecState, function: jsValue, args: pointer, argCount: int): jsValue {.importc, dynlib: dllname, cdecl.}
+  ## 调用window上的全局函数
+
+proc jsGet*(es: jsExecState, obj: jsValue, prop: cstring): jsValue {.importc, dynlib: dllname, cdecl.}
+  ## 如果obj是个js的object，则获取prop指定的属性。如果obj不是js object类型，则返回jsUndefined
+
+proc jsSet*(es: jsExecState, obj: jsValue, prop: cstring, value: jsValue) {.importc, dynlib: dllname, cdecl.}
+  ## 设置obj的属性
+
+proc jsGetGlobal*(es: jsExecState, prop: cstring): jsValue {.importc, dynlib: dllname, cdecl.}
+  ## 获取window上的属性
+
+proc jsSetGlobal*(es: jsExecState, prop: cstring, v: jsValue) {.importc, dynlib: dllname, cdecl.}
+  ## 设置window上的属性
+
+proc jsGetAt*(es: jsExecState, obj: jsValue, index: int): jsValue {.importc, dynlib: dllname, cdecl.}
+  ## 设置js arrary的第index个成员的值，obj必须是js array才有用，否则会返回jsUndefined
+
+proc jsSetAt*(es: jsExecState, obj: jsValue, index: int, value: jsValue) {.importc, dynlib: dllname, cdecl.}
+  ## 设置js arrary的第index个成员的值，obj必须是js array才有用
+
+proc jsGetKeys*(es: jsExecState, obj: jsValue): jsKeys {.importc, dynlib: dllname, cdecl.}
+  ## 获取obj有哪些key
+
+proc jsGetLength*(es: jsExecState, obj: jsValue): int {.importc, dynlib: dllname, cdecl.}
+  ## 获取js arrary的长度，obj必须是js array才有用
+
+proc jsSetLength*(es: jsExecState, obj: jsValue, length: int) {.importc, dynlib: dllname, cdecl.}
+  ## 设置js arrary的长度，obj必须是js array才有用
+
+proc jsGetWebView*(es: jsExecState): wkeWebView {.importc, dynlib: dllname, cdecl.}
+  ## 获取es对应的webview
+
+proc jsGC*() {.importc, dynlib: dllname, cdecl.}
+  ## 强制垃圾回收
+
+proc jsBindFunction*(name: cstring, fn: jsNativeFunction, argCount: int) {.importc, dynlib: dllname, fastcall.}
+  ## 绑定一个全局函数到主frame的window上。
+  ## 此接口只能绑定主frame，并且特别需要注意的是，因为历史原因，此接口是fastcall调用约定！（但wkeJsBindFunction不是）另外此接口和wkeJsBindFunction必须在webview创建前调用
+
+proc jsBindGetter*(name: cstring, fn: jsNativeFunction) {.importc, dynlib: dllname, cdecl.}
+  ## 对js winows绑定一个属性访问器，在js里windows.XXX这种形式调用时，fn会被调用
+  ## jsBindGetter("XXX")
+
+proc jsBindSetter*(name: cstring, fn: jsNativeFunction) {.importc, dynlib: dllname, cdecl.}
+  ## 对js winows绑定一个属性设置器
+
+proc wkeJsBindFunction*(name: cstring, fn: wkeJsNativeFunction, param: pointer, argCount: int) {.importc, dynlib: dllname, cdecl.}
+  ## 和jsBindFunction功能类似，但更方便一点，可以传一个param做自定义数据。
+  ## 此接口和wkeJsBindFunction必须在webview创建前调用 
+
+proc jsObject*(es: jsExecState, data: jsData): jsValue {.importc, dynlib: dllname, cdecl.}
+  ## 构建一个js Objcet，可以传递给js使用
+
+proc jsFunction*(es: jsExecState, data: jsData): jsValue {.importc, dynlib: dllname, cdecl.}
+  ## 创建一个主frame的全局函数。jsData的用法如上。js调用：XXX() 此时jsData的callAsFunction触发。 其实jsFunction和jsObject功能基本类似。且jsObject的功能更强大一些
+
+proc jsGetData*(es: jsExecState, value: jsValue): jsData {.importc, dynlib: dllname, cdecl.}
+  ## 获取jsObject或jsFunction创建的jsValue对应的jsData指针
+
+proc jsGetLastErrorIfException*(es: jsExecState): jsExceptionInfo {.importc, dynlib: dllname, cdecl.}
+  ## 当wkeRunJs、jsCall等接口调用时，如果执行的js代码有异常，此接口将获取到异常信息。否则返回nullptr
