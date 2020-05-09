@@ -104,7 +104,7 @@ type
   wkeMemBuf* {.bycopy.} = object
     unuse*: int
     data*: pointer
-    length*: csize
+    length*: int
 
 type
   wkeRequestType* = enum
@@ -128,7 +128,7 @@ type
   wkePostBodyElements* {.bycopy.} = object
     size*: int
     element*: ptr ptr wkePostBodyElement
-    elementSize*: csize
+    elementSize*: int
     isDirty*: bool
 
 type
@@ -551,13 +551,13 @@ proc wkeGetString*(s: wkeString): cstring {.importc, dynlib: dllname, cdecl.}
 proc wkeGetStringW*(s: wkeString): cstring {.importc, dynlib: dllname, cdecl.}
   ## 获取wkeString结构体对应的字符串，utf16编码
 
-proc wkeSetString*(s: wkeString, str: cstring, len: csize_t) {.importc, dynlib: dllname, cdecl.}
+proc wkeSetString*(s: wkeString, str: cstring, len: int) {.importc, dynlib: dllname, cdecl.}
   ## 设置wkeString结构体对应的字符串，utf8编码
 
-proc wkeSetStringW*(s: wkeString, str: cstring, len: csize_t) {.importc, dynlib: dllname, cdecl.}
+proc wkeSetStringW*(s: wkeString, str: cstring, len: int) {.importc, dynlib: dllname, cdecl.}
   ## 设置wkeString结构体对应的字符串，utf16编码
 
-proc wkeCreateStringW*(str: cstring, len: csize_t): wkeString {.importc, dynlib: dllname, cdecl.}
+proc wkeCreateStringW*(str: cstring, len: int): wkeString {.importc, dynlib: dllname, cdecl.}
   ## 通过utf16编码的字符串，创建一个wkeString
 
 proc wkeDeleteString*(str: wkeString) {.importc, dynlib: dllname, cdecl.}
@@ -742,7 +742,7 @@ proc wkeNetGetRequestMethod*(jobPtr: pointer): wkeRequestType {.importc, dynlib:
 proc wkeNetGetPostBody*(jobPtr: pointer): wkePostBodyElements {.importc, dynlib: dllname, cdecl.}
   ## 获取此请求中的post数据。只有当请求是post时才有效果
 
-proc wkeNetCreatePostBodyElements*(webView: wkeWebView, length: csize_t): wkePostBodyElements {.importc, dynlib: dllname, cdecl.}
+proc wkeNetCreatePostBodyElements*(webView: wkeWebView, length: int): wkePostBodyElements {.importc, dynlib: dllname, cdecl.}
   ## 暂无接口描述信息
 
 proc wkeNetFreePostBodyElements*(elements: wkePostBodyElements) {.importc, dynlib: dllname, cdecl.}
@@ -808,7 +808,7 @@ proc jsInt*(n: int): jsValue {.importc, dynlib: dllname, cdecl.}
 proc jsString*(es: jsExecState, str: cstring): jsValue {.importc, dynlib: dllname, cdecl.}
   ## 构建一个utf8编码的字符串的的jsValue。str会在内部拷贝保存，注意是创建
 
-proc jsArrayBuffer*(es: jsExecState, buffer: cstring, size: csize_t): jsValue {.importc, dynlib: dllname, cdecl.}
+proc jsArrayBuffer*(es: jsExecState, buffer: cstring, size: int): jsValue {.importc, dynlib: dllname, cdecl.}
   ## 构建一个js的arraybuffer类型的jaValue。主要用来处理一些二进制数据，注意是创建
 
 proc jsGetArrayBuffer*(es: jsExecState, value: jsValue): wkeMemBuf {.importc, dynlib: dllname, cdecl.}
